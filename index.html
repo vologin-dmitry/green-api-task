@@ -16,12 +16,15 @@
             padding: 5%;
             font-family: Arial, sans-serif;
             margin: 0;
+            height: 100vh;
         }
         .left, .right {
             width: 60%;
             padding: 2%;
             border: 1px solid #ccc;
             border-radius: 5px;
+            flex-direction: column;
+            height: 100vh;
         }
         input, textarea, button {
             width: 100%;
@@ -42,8 +45,8 @@
         .response {
             border: none;
             padding: 10px;
-            height: 200px;
             overflow-y: auto;
+            flex-grow: 1;
         }
     </style>
 </head>
@@ -56,13 +59,13 @@
     <button onclick="getSettings()">getSettings</button>
     <button onclick="getStateInstance()">getStateInstance</button>
 
-    <input type="text" placeholder="ChatId to which the message should be sent" id="sendMessageChatId">
-    <textarea placeholder="Your message" id="sendMessageText"></textarea>
+    <input type="text" placeholder="sendMessageChatId" id="sendMessageChatId">
+    <textarea placeholder="Message" id="sendMessageText"></textarea>
 
     <button onclick="sendMessage()">sendMessage</button>
 
-    <input type="text" placeholder="ChatId to which the file should be sent" id="sendFileChatId">
-    <textarea placeholder="File Url" id="sendFileUrl"></textarea>
+    <input type="text" placeholder="sendFileChatId" id="sendFileChatId">
+    <textarea placeholder="sendFileUrl" id="sendFileUrl"></textarea>
 
     <button onclick="sendFileByUrl()">sendFileByUrl</button>
 </div>
@@ -99,8 +102,9 @@
     const { idInstance, apiTokenInstance } = await getUserCredentials()
     const chatId = document.getElementById('sendFileChatId').value;
     const urlFile = document.getElementById('sendFileUrl').value;
+    const fileName = urlFile.split('/').pop();
 
-    await makeRequestAndShowResponse('POST', 'sendFileByUrl', idInstance, apiTokenInstance, { chatId, urlFile, fileName: 'test.png' });
+    await makeRequestAndShowResponse('POST', 'sendFileByUrl', idInstance, apiTokenInstance, { chatId, urlFile, fileName });
   }
 
   async function getUserCredentials() {
@@ -121,15 +125,22 @@
       responseField.innerText = `Unsupported url method. Must be one of: ${SUPPORTED_URL_METHODS.join(', ')}`;
       return;
     }
-    if (typeof idInstance !== 'string' || !idInstance.trim()) {
+    if (typeof idInstance !== 'string' || !idInstance?.trim()) {
       responseField.innerText = `Invalid idInstance. Must be not empty string`;
       return;
     }
-    if (typeof apiTokenInstance !== 'string' || !apiTokenInstance.trim()) {
+    if (typeof apiTokenInstance !== 'string' || !apiTokenInstance?.trim()) {
       responseField.innerText = `Invalid apiTokenInstance. Must be not empty string`;
       return;
     }
-    body = body ? JSON.stringify(body) : null
+    if (body && typeof body === 'object') {
+      for (const key of Object.keys(body)) {
+        if (typeof body[key] !== 'string' || !body[key]?.trim()) {
+          responseField.innerText = `Missing ${key} param`;
+          return;
+        }
+      }
+    }
 
     responseField.innerText = await makeRequest(
       httpMethod,
@@ -152,6 +163,7 @@
       });
     } catch (e) {
       if (e) {
+        console.log(e.message);
         return `Error happened when making request! Error: ${e.message}`;
       }
     }
