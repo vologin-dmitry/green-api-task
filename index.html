@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Green-api</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 5%;
+            padding: 5%;
+            font-family: Arial, sans-serif;
+            margin: 0;
+        }
+        .left, .right {
+            width: 60%;
+            padding: 2%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        input, textarea, button {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 1%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            border: 1px solid #ccc;
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .response {
+            border: none;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="left">
+    <input type="text" placeholder="idInstance" id="idInstance">
+    <input type="text" placeholder="ApiTokenInstance" id="ApiTokenInstance">
+
+    <button onclick="getSettings()">getSettings</button>
+    <button onclick="getStateInstance()">getStateInstance</button>
+
+    <input type="text" placeholder="ChatId to which the message should be sent" id="sendMessageChatId">
+    <textarea placeholder="Your message" id="sendMessageText"></textarea>
+
+    <button onclick="sendMessage()">sendMessage</button>
+
+    <input type="text" placeholder="ChatId to which the file should be sent" id="sendFileChatId">
+    <textarea placeholder="File Url" id="sendFileUrl"></textarea>
+
+    <button onclick="sendFileByUrl()">sendFileByUrl</button>
+</div>
+
+<div class="right" id="responseContent">
+    <h4>Ответ:</h4>
+    <div class="response" id="responseDiv"></div>
+</div>
+
+<script>
+  const URL = 'https://1103.api.green-api.com';
+  const SUPPORTED_HTTP_METHODS = ['GET', 'POST'];
+  const SUPPORTED_URL_METHODS = ['getSettings', 'getStateInstance', 'sendMessage', 'sendFileByUrl']
+
+  async function getSettings() {
+    const { idInstance, apiTokenInstance } = await getUserCredentials()
+    await makeRequestAndShowResponse('GET', 'getSettings', idInstance, apiTokenInstance);
+  }
+
+  async function getStateInstance() {
+    const { idInstance, apiTokenInstance } = await getUserCredentials()
+    await makeRequestAndShowResponse('GET', 'getStateInstance', idInstance, apiTokenInstance);
+  }
+
+  async function sendMessage() {
+    const { idInstance, apiTokenInstance } = await getUserCredentials()
+    const chatId = document.getElementById('sendMessageChatId').value;
+    const message = document.getElementById('sendMessageText').value;
+
+    await makeRequestAndShowResponse('POST', 'sendMessage', idInstance, apiTokenInstance, { chatId, message });
+  }
+
+  async function sendFileByUrl() {
+    const { idInstance, apiTokenInstance } = await getUserCredentials()
+    const chatId = document.getElementById('sendFileChatId').value;
+    const urlFile = document.getElementById('sendFileUrl').value;
+
+    await makeRequestAndShowResponse('POST', 'sendFileByUrl', idInstance, apiTokenInstance, { chatId, urlFile, fileName: 'test.png' });
+  }
+
+  async function getUserCredentials() {
+    const idInstance = document.getElementById('idInstance').value;
+    const apiTokenInstance = document.getElementById('ApiTokenInstance').value;
+
+    return { idInstance, apiTokenInstance }
+  }
+
+  async function makeRequestAndShowResponse(httpMethod, urlMethod, idInstance, apiTokenInstance, body) {
+    let responseField = document.getElementById('responseDiv');
+
+    if (!SUPPORTED_HTTP_METHODS.includes(httpMethod)) {
+      responseField.innerText = `Unsupported http method. Must be one of: ${SUPPORTED_HTTP_METHODS.join(', ')}`;
+      return;
+    }
+    if (!SUPPORTED_URL_METHODS.includes(urlMethod)) {
+      responseField.innerText = `Unsupported url method. Must be one of: ${SUPPORTED_URL_METHODS.join(', ')}`;
+      return;
+    }
+    if (typeof idInstance !== 'string' || !idInstance.trim()) {
+      responseField.innerText = `Invalid idInstance. Must be not empty string`;
+      return;
+    }
+    if (typeof apiTokenInstance !== 'string' || !apiTokenInstance.trim()) {
+      responseField.innerText = `Invalid apiTokenInstance. Must be not empty string`;
+      return;
+    }
+    body = body ? JSON.stringify(body) : null
+
+    responseField.innerText = await makeRequest(
+      httpMethod,
+      urlMethod,
+      idInstance,
+      apiTokenInstance,
+      body
+    );
+  }
+
+  async function makeRequest(httpMethod, urlMethod, idInstance, apiTokenInstance, body) {
+    let response;
+    try {
+      response = await fetch(`${URL}/waInstance${idInstance}/${urlMethod}/${apiTokenInstance}`, {
+        method: httpMethod,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: body ? JSON.stringify(body) : null,
+      });
+    } catch (e) {
+      if (e) {
+        return ` Error happened when making request! Error: ${e.message}}`;
+      }
+    }
+    const result = await response.json();
+    return JSON.stringify(result, null, 2);
+  }
+</script>
+
+</body>
+</html>
